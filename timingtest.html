@@ -1,0 +1,226 @@
+<html xmlns="http://www.w3.org/1999/xhtml" dir="ltr" lang="en-US"> 
+<head><title>timing test</title>
+</head>
+<body onkeydown="keydown()" onkeyup="keyup()" onFocus = "refocus()">
+<div style="width:100%;">
+<div style="float:left; width:76%;">
+Enter the key combination below (bold is what to type next) _ is space
+<button type="button" onclick="view_log()">View Log</button><button type="button" onclick="hide_log()">Hide Log</button><br>
+Type <span id='goal'><b>ADSF</b> SF _SF</span>
+<div id="log"></div>
+<div id="loglog"></div>
+<div id="loggoal"></div>
+</div>
+<div style="float:right; width:12%; ">
+<table border="1" id="right2">
+</table>
+</div>
+<div style="float:right; width:12%; ">
+<table border="1" id="right1">
+</table>
+</div>
+</div>
+
+
+<script type="text/javascript">
+var times = [];
+var keysdown=[];
+var counts=[];
+var last_time=(new Date()).getTime();
+
+var keytimes=new Array(32);
+var keycounts=new Array(32);
+for(i=0;i<32;i++) {
+	keytimes[i]=0.0;
+	keycounts[i]=0;
+}
+
+
+function keydown () {
+	var x=event.which;
+	if(!keysdown[x]) {
+		keysdown[x]=true;
+		if(!counts[x]) counts[x]=1;
+		else counts[x]++;
+	}
+};
+
+
+//if all keys up, then report what was pressed
+function keyup() {
+	var x=event.which;
+	keysdown[x]=false;
+	if(!keysdown.some(function(ii){return ii})) {
+		outstr='';
+		for(i=0;i<counts.length;i++) {
+			if(counts[i]) {
+				str=String.fromCharCode(i);
+				if(str==' ') str="_";
+				outstr+=(new Array(1 + counts[i])).join(str);
+			}
+		}
+		callback(outstr);
+		counts=[];
+	}
+}
+
+var goal_len=3;
+var biggoalints=[];
+var biggoal=['ADFS', 'FS', '_FS'];
+var goali=0;
+
+var timings=[];
+var ntimings=8;
+var cur_times=[];
+
+function init_goal() {
+	biggoal=[];
+	biggoalints=[];
+	for(i=0; i<goal_len; i++) {
+		//make goals that haven't occurred yet more likely
+		var goalbits;
+		maxcount=0;
+		for(j=1; j<keycounts.length; j++) maxcount=Math.max(maxcount, keycounts[j]);
+		mincount=maxcount;
+		for(j=1; j<keycounts.length; j++) mincount=Math.min(mincount, keycounts[j]);
+		
+		while(1) {
+			goalbits=Math.floor(Math.random()*31+1);
+			var prob=1-(keycounts[goalbits]-mincount)/(maxcount+0.01);
+			if(Math.random()<prob*prob/10) break;
+		}
+		biggoal.push(int2key(goalbits));
+		biggoalints.push(goalbits);
+	}
+	goali=0;
+	displaygoal();
+	
+	timings=[];
+	log.innerHTML='';
+}
+init_goal();
+
+function record_timings() {
+	timings.push(cur_times);
+	displaylog();
+	
+	if(timings.length>=ntimings) {
+		bests=get_best_timings();
+		addlog(bests);
+		best1=bests[0];
+		best2=bests[1];
+		alert(best1+' '+best2+' good job!');
+		fw=0.75;
+		keytimes[biggoalints[0]]+=(1-fw)*best1;
+		keycounts[biggoalints[0]]+=1-fw;
+		keytimes[biggoalints[1]]+=fw*best1+(1-fw)*best2;
+		keycounts[biggoalints[1]]+=1;
+		keytimes[biggoalints[2]]+=best2*fw;
+		keycounts[biggoalints[2]]+=fw;
+		draw_table();
+		init_goal();
+	}
+	
+	cur_times=[];
+	goali=0;
+}
+
+var loglog=[];
+var loggoal=[];
+function addlog(bests) {
+	loglog.push(bests);
+	loggoal.push(biggoal);
+}
+
+function view_log() {
+	document.getElementById('loglog').innerHTML="timeslog:"+loglog.map(function(i){return '['+i+']'});
+	document.getElementById('loggoal').innerHTML="goalslog:"+loggoal.map(function(i){return '['+i+']'});
+}
+
+function hide_log() {
+	document.getElementById('loglog').innerHTML="";
+	document.getElementById('loggoal').innerHTML="";
+}
+
+function get_best_timings() {
+	best1=1000;
+	best2=1000;
+	for(i=0; i<timings.length; i++) {
+		best1=Math.min(best1,timings[i][0]);
+		best2=Math.min(best2,timings[i][1]);
+	}
+	return [best1, best2];
+}
+
+function displaylog() {
+	log = document.getElementById('log');
+	str=timings.map(function(e){return e.join(', ')}).join('<br>');
+	str+='<br>best:<br>'+get_best_timings().join(', ');
+	log.innerHTML=str;
+}
+
+function sortstr(str) {
+	return str.split('').sort().join('');
+}
+
+function callback(combo) {
+	var thist=(new Date()).getTime();
+	var t=thist-last_time;
+	if(sortstr(combo)==sortstr(biggoal[goali])) {
+		last_time=thist;
+		goali++;
+		
+		if(goali>1) {
+			cur_times.push(t);
+		}
+		
+		if(goali==biggoal.length) {
+			record_timings();
+		}
+		
+		displaygoal();
+	}
+}
+
+function displaygoal() {
+	outstr='';
+	for(i=0;i<biggoal.length;i++) {
+		if(i==goali) outstr+='<b>'+biggoal[i]+'</b>';
+		else outstr+=biggoal[i]+'';
+		outstr+=' , '
+	}
+	document.getElementById('goal').innerHTML=outstr;
+}
+
+function int2key(i) {
+	keys='ASDF_';
+	out='';
+	for(j=0;j<keys.length;j++) {
+		if(i%2) out+=keys[j];
+		i=Math.floor(i/2);
+	}
+	return out;
+}
+
+function draw_table() {
+	table1='';
+	table2='';
+	for(i=0;i<32; i++) {
+		score=Math.round(keytimes[i]/keycounts[i]);
+		if(keycounts[i]==0) score='___';
+		row='<tr><td>'+int2key(i)+'</td><td>'+score+'</td><td>'+keycounts[i]+'</td></tr>';
+		if(i>=16) table2+=row;
+		else table1+=row;
+	}
+	document.getElementById('right1').innerHTML=table1;
+	document.getElementById('right2').innerHTML=table2;
+}
+draw_table();
+
+function refocus() {
+	keysdown=[];
+}
+
+</script>
+</body>
+</html>
