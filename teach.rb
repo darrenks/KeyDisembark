@@ -117,7 +117,7 @@ def get_hint(cur,word)
 end
 
 Teach.each_char.to_a.sort.each{|i|puts [i, get_hint('',i)]*' '}
-exit
+#exit
 
 def show_screen(cur,word)
 	show_progress
