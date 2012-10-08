@@ -1,3 +1,5 @@
+Video demonstration: http://www.youtube.com/watch?v=rtnACphfJrE
+
 KeyDisembark is a 5 button keyboard. There are 31 combinations (not 32 because pressing nothing will not register as a key press). These combinations map to all 26 letters, shift, space, basic punctuation, and backspace. Here are the combinations:
 
 a = a...
